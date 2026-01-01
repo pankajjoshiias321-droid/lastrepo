@@ -87,7 +87,7 @@ export default function CreateRoadmapPage() {
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900"
                   placeholder="e.g., JavaScript, Python, Web Development, Data Science"
                 />
                 <p className="mt-1 text-sm text-gray-500">
