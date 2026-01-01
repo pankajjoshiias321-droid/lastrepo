@@ -2,6 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Toaster } from 'react-hot-toast'
+import { Analytics } from '@vercel/analytics/next'
 import { AuthProvider } from '@/utils/auth'
 import Navigation from '@/components/navigation'
 
@@ -27,6 +28,7 @@ export default function RootLayout({
           </main>
           <Toaster position="top-right" />
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   )
