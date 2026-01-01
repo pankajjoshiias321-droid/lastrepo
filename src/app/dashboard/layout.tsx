@@ -22,6 +22,18 @@ export default function ProtectedLayout({
     }
   }, [user, loading, router]);
 
+  // Add a timeout to prevent infinite loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.error('Auth loading timeout - forcing redirect to login');
+        router.push('/login');
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [loading, router]);
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -36,13 +48,37 @@ export default function ProtectedLayout({
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+          <p className="text-sm text-gray-500 mt-2">If this takes too long, please refresh the page</p>
+          <button
+            onClick={() => router.push('/login')}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Go to Login
+          </button>
+        </div>
       </div>
     );
   }
 
   if (!user) {
-    return null; // The redirect effect will handle navigation
+    // Redirect to login if not authenticated
+    router.push('/login');
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Redirecting to login...</p>
+          <button
+            onClick={() => router.push('/login')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Login Now
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
