@@ -16,9 +16,7 @@ import {
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import toast from 'react-hot-toast';
 
-type RoadmapWithFavorite = Database['public']['Tables']['roadmaps']['Row'] & {
-  is_favorite: boolean;
-};
+type RoadmapWithFavorite = Database['public']['Tables']['roadmaps']['Row'];
 
 export default function DashboardPage() {
   const { user } = useUser();
@@ -70,18 +68,7 @@ export default function DashboardPage() {
         }
 
         console.log('Fetched roadmaps:', data?.length || 0);
-
-        // Load favorites from localStorage
-        const favoritesKey = `roadmap_favorites_${user.id}`;
-        const favorites = JSON.parse(localStorage.getItem(favoritesKey) || '[]');
-
-        // Merge favorites with roadmap data
-        const roadmapsWithFavorites = (data || []).map(roadmap => ({
-          ...roadmap,
-          is_favorite: favorites.includes(roadmap.id)
-        }));
-
-        setRoadmaps(roadmapsWithFavorites);
+        setRoadmaps(data || []);
       } catch (error) {
         console.error('Failed to fetch roadmaps:', error);
         toast.error('Failed to load roadmaps');
@@ -118,33 +105,30 @@ export default function DashboardPage() {
     setActionLoading(prev => ({ ...prev, [actionKey]: true }));
 
     try {
-      console.log('Updating favorite status in localStorage...');
+      console.log('Updating favorite status in database...');
+      const { data, error } = await supabase
+        .from('roadmaps')
+        .update({ is_favorite: !roadmap.is_favorite })
+        .eq('id', roadmap.id)
+        .eq('user_id', user.id) // Add user_id check for security
+        .select()
+        .single();
 
-      // For now, since is_favorite column doesn't exist in database, use localStorage
-      const favoritesKey = `roadmap_favorites_${user.id}`;
-      const favorites = JSON.parse(localStorage.getItem(favoritesKey) || '[]');
-      const isCurrentlyFavorite = favorites.includes(roadmap.id);
-
-      if (isCurrentlyFavorite) {
-        // Remove from favorites
-        const newFavorites = favorites.filter((id: string) => id !== roadmap.id);
-        localStorage.setItem(favoritesKey, JSON.stringify(newFavorites));
-        console.log('Removed from localStorage favorites');
-      } else {
-        // Add to favorites
-        favorites.push(roadmap.id);
-        localStorage.setItem(favoritesKey, JSON.stringify(favorites));
-        console.log('Added to localStorage favorites');
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
       }
+
+      console.log('Database update successful:', data);
 
       // Update local state
       setRoadmaps(prev =>
         prev.map(r =>
-          r.id === roadmap.id ? { ...r, is_favorite: !isCurrentlyFavorite } : r
+          r.id === roadmap.id ? { ...r, is_favorite: !r.is_favorite } : r
         )
       );
 
-      toast.success(isCurrentlyFavorite ? 'Removed from favorites' : 'Added to favorites');
+      toast.success(roadmap.is_favorite ? 'Removed from favorites' : 'Added to favorites');
     } catch (error: any) {
       console.error('Error toggling favorite:', error);
       toast.error(`Failed to update favorite status: ${error.message || 'Unknown error'}`);

@@ -41,7 +41,7 @@ export interface Database {
           user_id: string
           topic: string
           level: string
-          is_favorite?: boolean
+          is_favorite: boolean
           share_token: string | null
           created_at: string
         }
