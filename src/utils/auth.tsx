@@ -20,37 +20,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    let mounted = true;
+
     // Get the initial session
     const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        // Ensure user exists in users table
-        const { data: existingUser } = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', session.user.id)
-          .single();
+      try {
+        console.log('Getting initial auth session...');
+        const { data: { session }, error } = await supabase.auth.getSession();
 
-        if (!existingUser) {
-          const { error: insertError } = await supabase
-            .from('users')
-            .insert([{ id: session.user.id, email: session.user.email! }]);
-
-          if (insertError) {
-            console.error('Error inserting user:', insertError);
+        if (error) {
+          console.error('Error getting session:', error);
+          if (mounted) {
+            setUser(null);
+            setLoading(false);
           }
+          return;
         }
-      }
 
-      setUser(session?.user || null);
-      setLoading(false);
+        console.log('Session retrieved:', session ? 'authenticated' : 'not authenticated');
 
-      // Listen for auth changes
-      const { data: { subscription } } = await supabase.auth.onAuthStateChange(
-        async (_event, session) => {
-          if (session?.user && _event === 'SIGNED_IN') {
-            // Ensure user exists in users table
+        if (session?.user && mounted) {
+          // Ensure user exists in users table
+          try {
             const { data: existingUser } = await supabase
               .from('users')
               .select('id')
@@ -58,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               .single();
 
             if (!existingUser) {
+              console.log('Creating user record...');
               const { error: insertError } = await supabase
                 .from('users')
                 .insert([{ id: session.user.id, email: session.user.email! }]);
@@ -66,22 +58,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 console.error('Error inserting user:', insertError);
               }
             }
-          }
-
-          setUser(session?.user || null);
-          setLoading(false);
-          if (_event === 'SIGNED_OUT') {
-            router.push('/');
+          } catch (userError) {
+            console.error('Error handling user creation:', userError);
           }
         }
-      );
 
-      return () => {
-        subscription.unsubscribe();
-      };
+        if (mounted) {
+          setUser(session?.user || null);
+          setLoading(false);
+        }
+
+        // Listen for auth changes
+        console.log('Setting up auth state listener...');
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (_event, session) => {
+            console.log('Auth state changed:', _event, session ? 'authenticated' : 'not authenticated');
+
+            if (session?.user && _event === 'SIGNED_IN' && mounted) {
+              // Ensure user exists in users table
+              try {
+                const { data: existingUser } = await supabase
+                  .from('users')
+                  .select('id')
+                  .eq('id', session.user.id)
+                  .single();
+
+                if (!existingUser) {
+                  console.log('Creating user record on sign in...');
+                  const { error: insertError } = await supabase
+                    .from('users')
+                    .insert([{ id: session.user.id, email: session.user.email! }]);
+
+                  if (insertError) {
+                    console.error('Error inserting user on sign in:', insertError);
+                  }
+                }
+              } catch (userError) {
+                console.error('Error handling user creation on sign in:', userError);
+              }
+            }
+
+            if (mounted) {
+              setUser(session?.user || null);
+              setLoading(false);
+              if (_event === 'SIGNED_OUT') {
+                router.push('/');
+              }
+            }
+          }
+        );
+
+        return () => {
+          console.log('Cleaning up auth subscription');
+          subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error('Critical error in getInitialSession:', error);
+        if (mounted) {
+          setUser(null);
+          setLoading(false);
+        }
+      }
     };
 
     getInitialSession();
+
+    // Cleanup function
+    return () => {
+      mounted = false;
+    };
   }, [router]);
 
   const signUp = async (email: string, password: string) => {

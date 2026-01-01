@@ -44,6 +44,41 @@ export default function DashboardPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
 
+  // Fetch roadmaps when user changes
+  useEffect(() => {
+    const fetchRoadmaps = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        console.log('Fetching roadmaps for user:', user.id);
+        const { data, error } = await supabase
+          .from('roadmaps')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching roadmaps:', error);
+          throw error;
+        }
+
+        console.log('Fetched roadmaps:', data?.length || 0);
+        setRoadmaps(data || []);
+      } catch (error) {
+        console.error('Failed to fetch roadmaps:', error);
+        toast.error('Failed to load roadmaps');
+        setRoadmaps([]); // Set empty array on error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRoadmaps();
+  }, [user]);
+
   const toggleFavorite = async (roadmap: RoadmapWithFavorite) => {
     try {
       const { error } = await supabase

@@ -18,7 +18,10 @@ export default function ProtectedLayout({
 
   useEffect(() => {
     if (!loading && !user) {
+      console.log('No user found, redirecting to login');
       router.push('/login');
+    } else if (!loading && user) {
+      console.log('User authenticated, showing dashboard');
     }
   }, [user, loading, router]);
 
