@@ -16,7 +16,9 @@ import {
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import toast from 'react-hot-toast';
 
-type RoadmapWithFavorite = Database['public']['Tables']['roadmaps']['Row'];
+type RoadmapWithFavorite = Database['public']['Tables']['roadmaps']['Row'] & {
+  is_favorite: boolean;
+};
 
 export default function DashboardPage() {
   const { user } = useUser();
@@ -32,6 +34,7 @@ export default function DashboardPage() {
     open: false,
     roadmap: null
   });
+  const [actionLoading, setActionLoading] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -67,7 +70,18 @@ export default function DashboardPage() {
         }
 
         console.log('Fetched roadmaps:', data?.length || 0);
-        setRoadmaps(data || []);
+
+        // Load favorites from localStorage
+        const favoritesKey = `roadmap_favorites_${user.id}`;
+        const favorites = JSON.parse(localStorage.getItem(favoritesKey) || '[]');
+
+        // Merge favorites with roadmap data
+        const roadmapsWithFavorites = (data || []).map(roadmap => ({
+          ...roadmap,
+          is_favorite: favorites.includes(roadmap.id)
+        }));
+
+        setRoadmaps(roadmapsWithFavorites);
       } catch (error) {
         console.error('Failed to fetch roadmaps:', error);
         toast.error('Failed to load roadmaps');
@@ -82,52 +96,110 @@ export default function DashboardPage() {
 
   const toggleFavorite = async (roadmap: RoadmapWithFavorite) => {
     console.log('toggleFavorite called for roadmap:', roadmap.id);
-    console.log('Current user:', user);
-    console.log('User ID:', user?.id);
+
     if (!user) {
+      console.error('No user authenticated');
       toast.error('You must be logged in to perform this action');
       return;
     }
+
+    if (!roadmap.id) {
+      console.error('No roadmap ID provided');
+      toast.error('Invalid roadmap');
+      return;
+    }
+
+    const actionKey = `favorite-${roadmap.id}`;
+    if (actionLoading[actionKey]) {
+      console.log('Action already in progress');
+      return;
+    }
+
+    setActionLoading(prev => ({ ...prev, [actionKey]: true }));
+
     try {
-      const { error } = await supabase
-        .from('roadmaps')
-        .update({ is_favorite: !roadmap.is_favorite })
-        .eq('id', roadmap.id);
+      console.log('Updating favorite status in localStorage...');
 
-      if (error) throw error;
+      // For now, since is_favorite column doesn't exist in database, use localStorage
+      const favoritesKey = `roadmap_favorites_${user.id}`;
+      const favorites = JSON.parse(localStorage.getItem(favoritesKey) || '[]');
+      const isCurrentlyFavorite = favorites.includes(roadmap.id);
 
+      if (isCurrentlyFavorite) {
+        // Remove from favorites
+        const newFavorites = favorites.filter((id: string) => id !== roadmap.id);
+        localStorage.setItem(favoritesKey, JSON.stringify(newFavorites));
+        console.log('Removed from localStorage favorites');
+      } else {
+        // Add to favorites
+        favorites.push(roadmap.id);
+        localStorage.setItem(favoritesKey, JSON.stringify(favorites));
+        console.log('Added to localStorage favorites');
+      }
+
+      // Update local state
       setRoadmaps(prev =>
         prev.map(r =>
-          r.id === roadmap.id ? { ...r, is_favorite: !r.is_favorite } : r
+          r.id === roadmap.id ? { ...r, is_favorite: !isCurrentlyFavorite } : r
         )
       );
 
-      toast.success(roadmap.is_favorite ? 'Removed from favorites' : 'Added to favorites');
-    } catch (error) {
+      toast.success(isCurrentlyFavorite ? 'Removed from favorites' : 'Added to favorites');
+    } catch (error: any) {
       console.error('Error toggling favorite:', error);
-      toast.error('Failed to update favorite status');
+      toast.error(`Failed to update favorite status: ${error.message || 'Unknown error'}`);
+    } finally {
+      setActionLoading(prev => ({ ...prev, [actionKey]: false }));
     }
   };
 
   const shareRoadmap = async (roadmap: RoadmapWithFavorite) => {
     console.log('shareRoadmap called for roadmap:', roadmap.id);
+
     if (!user) {
+      console.error('No user authenticated');
       toast.error('You must be logged in to perform this action');
       return;
     }
+
+    if (!roadmap.id) {
+      console.error('No roadmap ID provided');
+      toast.error('Invalid roadmap');
+      return;
+    }
+
+    const actionKey = `share-${roadmap.id}`;
+    if (actionLoading[actionKey]) {
+      console.log('Action already in progress');
+      return;
+    }
+
+    setActionLoading(prev => ({ ...prev, [actionKey]: true }));
+
     try {
+      console.log('Checking existing share token...');
       let shareToken = roadmap.share_token;
 
       if (!shareToken) {
+        console.log('Generating new share token...');
         // Generate a unique share token
         shareToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
-        const { error } = await supabase
+        console.log('Updating roadmap with share token...');
+        const { data, error } = await supabase
           .from('roadmaps')
           .update({ share_token: shareToken })
-          .eq('id', roadmap.id);
+          .eq('id', roadmap.id)
+          .eq('user_id', user.id) // Add user_id check for security
+          .select()
+          .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Supabase error:', error);
+          throw error;
+        }
+
+        console.log('Share token update successful:', data);
 
         // Update local state
         setRoadmaps(prev =>
@@ -138,20 +210,41 @@ export default function DashboardPage() {
       }
 
       const shareUrl = `${window.location.origin}/shared/${shareToken}`;
+      console.log('Opening share modal with URL:', shareUrl);
       setShareModal({ open: true, roadmap, shareUrl });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sharing roadmap:', error);
-      toast.error('Failed to share roadmap');
+      toast.error(`Failed to share roadmap: ${error.message || 'Unknown error'}`);
+    } finally {
+      setActionLoading(prev => ({ ...prev, [actionKey]: false }));
     }
   };
 
   const duplicateRoadmap = async (roadmap: RoadmapWithFavorite) => {
     console.log('duplicateRoadmap called for roadmap:', roadmap.id);
+
     if (!user) {
+      console.error('No user authenticated');
       toast.error('You must be logged in to perform this action');
       return;
     }
+
+    if (!roadmap.id) {
+      console.error('No roadmap ID provided');
+      toast.error('Invalid roadmap');
+      return;
+    }
+
+    const actionKey = `duplicate-${roadmap.id}`;
+    if (actionLoading[actionKey]) {
+      console.log('Action already in progress');
+      return;
+    }
+
+    setActionLoading(prev => ({ ...prev, [actionKey]: true }));
+
     try {
+      console.log('Creating duplicated roadmap...');
       // First, create the duplicated roadmap
       const { data: newRoadmap, error: roadmapError } = await supabase
         .from('roadmaps')
@@ -164,17 +257,29 @@ export default function DashboardPage() {
         .select()
         .single();
 
-      if (roadmapError) throw roadmapError;
+      if (roadmapError) {
+        console.error('Error creating roadmap:', roadmapError);
+        throw roadmapError;
+      }
+
+      console.log('New roadmap created:', newRoadmap);
 
       // Then, duplicate all steps
+      console.log('Fetching roadmap steps...');
       const { data: steps, error: stepsError } = await supabase
         .from('roadmap_steps')
         .select('*')
         .eq('roadmap_id', roadmap.id);
 
-      if (stepsError) throw stepsError;
+      if (stepsError) {
+        console.error('Error fetching steps:', stepsError);
+        throw stepsError;
+      }
+
+      console.log('Found steps:', steps?.length || 0);
 
       if (steps && steps.length > 0) {
+        console.log('Duplicating steps...');
         const duplicatedSteps = steps.map(step => ({
           roadmap_id: newRoadmap.id,
           step_number: step.step_number,
@@ -187,38 +292,71 @@ export default function DashboardPage() {
           .from('roadmap_steps')
           .insert(duplicatedSteps);
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error('Error inserting steps:', insertError);
+          throw insertError;
+        }
+
+        console.log('Steps duplicated successfully');
       }
 
       // Add the new roadmap to the state
       setRoadmaps(prev => [newRoadmap, ...prev]);
       toast.success('Roadmap duplicated successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error duplicating roadmap:', error);
-      toast.error('Failed to duplicate roadmap');
+      toast.error(`Failed to duplicate roadmap: ${error.message || 'Unknown error'}`);
+    } finally {
+      setActionLoading(prev => ({ ...prev, [actionKey]: false }));
     }
   };
 
   const deleteRoadmap = async (roadmap: RoadmapWithFavorite) => {
     console.log('deleteRoadmap called for roadmap:', roadmap.id);
+
     if (!user) {
+      console.error('No user authenticated');
       toast.error('You must be logged in to perform this action');
       return;
     }
+
+    if (!roadmap.id) {
+      console.error('No roadmap ID provided');
+      toast.error('Invalid roadmap');
+      return;
+    }
+
+    const actionKey = `delete-${roadmap.id}`;
+    if (actionLoading[actionKey]) {
+      console.log('Action already in progress');
+      return;
+    }
+
+    setActionLoading(prev => ({ ...prev, [actionKey]: true }));
+
     try {
+      console.log('Deleting roadmap from database...');
       const { error } = await supabase
         .from('roadmaps')
         .delete()
-        .eq('id', roadmap.id);
+        .eq('id', roadmap.id)
+        .eq('user_id', user.id); // Add user_id check for security
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      console.log('Roadmap deleted successfully');
 
       setRoadmaps(prev => prev.filter(r => r.id !== roadmap.id));
       setDeleteModal({ open: false, roadmap: null });
       toast.success('Roadmap deleted successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting roadmap:', error);
-      toast.error('Failed to delete roadmap');
+      toast.error(`Failed to delete roadmap: ${error.message || 'Unknown error'}`);
+    } finally {
+      setActionLoading(prev => ({ ...prev, [actionKey]: false }));
     }
   };
 
@@ -281,9 +419,12 @@ export default function DashboardPage() {
                               toggleFavorite(roadmap);
                               setMenuOpen(null);
                             }}
-                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                            disabled={actionLoading[`favorite-${roadmap.id}`]}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            {roadmap.is_favorite ? (
+                            {actionLoading[`favorite-${roadmap.id}`] ? (
+                              <div className="w-4 h-4 mr-3 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
+                            ) : roadmap.is_favorite ? (
                               <StarIconSolid className="w-4 h-4 mr-3 text-yellow-500" />
                             ) : (
                               <StarIcon className="w-4 h-4 mr-3" />
@@ -297,9 +438,14 @@ export default function DashboardPage() {
                               duplicateRoadmap(roadmap);
                               setMenuOpen(null);
                             }}
-                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                            disabled={actionLoading[`duplicate-${roadmap.id}`]}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <DocumentDuplicateIcon className="w-4 h-4 mr-3" />
+                            {actionLoading[`duplicate-${roadmap.id}`] ? (
+                              <div className="w-4 h-4 mr-3 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
+                            ) : (
+                              <DocumentDuplicateIcon className="w-4 h-4 mr-3" />
+                            )}
                             Duplicate Roadmap
                           </button>
 
@@ -309,9 +455,14 @@ export default function DashboardPage() {
                               shareRoadmap(roadmap);
                               setMenuOpen(null);
                             }}
-                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                            disabled={actionLoading[`share-${roadmap.id}`]}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <ShareIcon className="w-4 h-4 mr-3" />
+                            {actionLoading[`share-${roadmap.id}`] ? (
+                              <div className="w-4 h-4 mr-3 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
+                            ) : (
+                              <ShareIcon className="w-4 h-4 mr-3" />
+                            )}
                             Share Roadmap
                           </button>
 
@@ -412,8 +563,12 @@ export default function DashboardPage() {
               </button>
               <button
                 onClick={() => deleteRoadmap(deleteModal.roadmap!)}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md"
+                disabled={actionLoading[`delete-${deleteModal.roadmap?.id}`]}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
               >
+                {actionLoading[`delete-${deleteModal.roadmap?.id}`] && (
+                  <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                )}
                 Delete
               </button>
             </div>
