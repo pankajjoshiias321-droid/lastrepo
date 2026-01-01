@@ -1,14 +1,14 @@
-import { Roadmap, RoadmapStep, GenerateRoadmapRequest } from './types';
+import { Roadmap, RoadmapStep, GenerateRoadmapRequest, Resource } from './types';
 
 // Mock AI service for generating roadmaps
 export async function generateRoadmap({ topic, level }: GenerateRoadmapRequest): Promise<Roadmap> {
   // Simulate API call delay
   await new Promise(resolve => setTimeout(resolve, 1000));
-  
+
   // Generate steps based on topic and level
   const steps: RoadmapStep[] = [];
   const stepCount = level === 'beginner' ? 10 : level === 'intermediate' ? 12 : 15;
-  
+
   // Define base topics for different learning paths
   const baseTopics: Record<string, string[]> = {
     'web development': [
@@ -84,7 +84,7 @@ export async function generateRoadmap({ topic, level }: GenerateRoadmapRequest):
       'Cloud Security'
     ]
   };
-  
+
   // Get the base topics for the requested topic, or create a generic path
   let baseSteps: string[];
   const topicKey = Object.keys(baseTopics).find(key => topic.toLowerCase().includes(key));
@@ -105,16 +105,16 @@ export async function generateRoadmap({ topic, level }: GenerateRoadmapRequest):
       `Future Trends in ${topic}`
     ];
   }
-  
+
   // Generate steps based on the topic
   for (let i = 0; i < stepCount; i++) {
     const stepIndex = i % baseSteps.length;
     const stepTopic = baseSteps[stepIndex];
-    
+
     // Create a step with a unique title
     const title = `${stepTopic} - ${i + 1}`;
     const description = `Learn the fundamentals of ${stepTopic}. Understand core concepts, best practices, and common patterns.`;
-    
+
     // Determine estimated time based on level
     let estimatedTime = '';
     if (level === 'beginner') {
@@ -124,20 +124,45 @@ export async function generateRoadmap({ topic, level }: GenerateRoadmapRequest):
     } else {
       estimatedTime = '3-5 days';
     }
-    
-    // Create YouTube search link
-    const searchQuery = encodeURIComponent(`${stepTopic} tutorial`);
-    const youtubeLink = `https://www.youtube.com/results?search_query=${searchQuery}`;
-    
+
+    // Create resources
+    const resources: Resource[] = [];
+
+    // Google search links
+    const googleQueries = [
+      { query: `${stepTopic} free tutorial`, label: 'Free Tutorial' },
+      { query: `${stepTopic} pdf notes`, label: 'PDF Notes' },
+      { query: `${stepTopic} documentation`, label: 'Documentation' },
+      { query: `${stepTopic} beginner guide`, label: 'Beginner Guide' }
+    ];
+
+    googleQueries.forEach(({ query, label }) => {
+      const searchQuery = encodeURIComponent(query);
+      resources.push({
+        type: 'google_search',
+        url: `https://www.google.com/search?q=${searchQuery}`,
+        label
+      });
+    });
+
+    // Community platforms
+    const communityResources = [
+      { url: `https://stackoverflow.com/search?q=${encodeURIComponent(stepTopic)}`, label: 'Stack Overflow', type: 'stackoverflow' as const },
+      { url: `https://github.com/search?q=${encodeURIComponent(stepTopic)}&type=repositories`, label: 'GitHub', type: 'github' as const },
+      { url: `https://www.reddit.com/search/?q=${encodeURIComponent(stepTopic)}`, label: 'Reddit', type: 'reddit' as const }
+    ];
+
+    resources.push(...communityResources);
+
     steps.push({
       step_number: i + 1,
       title,
       description,
       estimated_time: estimatedTime,
-      youtube_link: youtubeLink
+      resources
     });
   }
-  
+
   return {
     topic,
     level,

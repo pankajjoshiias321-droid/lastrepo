@@ -116,17 +116,25 @@ export default function SharedRoadmapPage({ params }: { params: { token: string 
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">{step.title}</h3>
                   <p className="text-gray-600 mb-4">{step.description}</p>
-                  <a
-                    href={step.youtube_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 transition duration-300"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                    </svg>
-                    Watch Tutorial
-                  </a>
+                  <div className="flex flex-wrap gap-2">
+                    {(step.resources as any[]).map((resource: any, index: number) => (
+                      <a
+                        key={index}
+                        href={resource.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
+                          resource.type === 'google_search' ? 'bg-blue-600 hover:bg-blue-700' :
+                          resource.type === 'stackoverflow' ? 'bg-orange-600 hover:bg-orange-700' :
+                          resource.type === 'github' ? 'bg-gray-800 hover:bg-gray-900' :
+                          resource.type === 'reddit' ? 'bg-red-600 hover:bg-red-700' :
+                          'bg-gray-600 hover:bg-gray-700'
+                        } transition duration-300`}
+                      >
+                        {resource.label}
+                      </a>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

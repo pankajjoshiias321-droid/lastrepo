@@ -65,7 +65,7 @@ export default function RoadmapDetailPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center py-12">
             <h3 className="text-lg font-medium text-gray-900">Roadmap not found</h3>
-            <p className="mt-1 text-gray-500">The requested roadmap could not be found or you don't have permission to view it.</p>
+            <p className="mt-1 text-gray-500">The requested roadmap could not be found or you don&apos;t have permission to view it.</p>
             <div className="mt-6">
               <Link
                 href="/dashboard"
@@ -120,14 +120,23 @@ export default function RoadmapDetailPage() {
                   <p className="mt-1 text-gray-600">{step.description}</p>
                   
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <a
-                      href={step.youtube_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700"
-                    >
-                      Watch Tutorial
-                    </a>
+                    {(step.resources as any[]).map((resource: any, index: number) => (
+                      <a
+                        key={index}
+                        href={resource.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
+                          resource.type === 'google_search' ? 'bg-blue-600 hover:bg-blue-700' :
+                          resource.type === 'stackoverflow' ? 'bg-orange-600 hover:bg-orange-700' :
+                          resource.type === 'github' ? 'bg-gray-800 hover:bg-gray-900' :
+                          resource.type === 'reddit' ? 'bg-red-600 hover:bg-red-700' :
+                          'bg-gray-600 hover:bg-gray-700'
+                        }`}
+                      >
+                        {resource.label}
+                      </a>
+                    ))}
                   </div>
                 </div>
               </div>

@@ -23,7 +23,7 @@ export default function HomePage() {
             Create Your Learning <span className="text-blue-600">Roadmap</span>
           </h1>
           <p className="text-xl text-gray-600 mb-10 max-w-3xl mx-auto">
-            Generate personalized learning paths with curated YouTube resources to master any skill
+            Generate personalized learning paths with Google search links and community resources to master any skill
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

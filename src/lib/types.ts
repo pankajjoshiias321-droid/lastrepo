@@ -1,9 +1,15 @@
+export interface Resource {
+  type: 'google_search' | 'stackoverflow' | 'github' | 'reddit';
+  url: string;
+  label: string;
+}
+
 export interface RoadmapStep {
   step_number: number;
   title: string;
   description: string;
-  estimated_time: string;
-  youtube_link: string;
+  estimated_time?: string;
+  resources: Resource[];
 }
 
 export interface Roadmap {

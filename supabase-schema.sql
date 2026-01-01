@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS roadmap_steps (
     step_number INTEGER NOT NULL,
     title TEXT NOT NULL,
     description TEXT NOT NULL,
-    youtube_link TEXT NOT NULL,
+    resources JSONB NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

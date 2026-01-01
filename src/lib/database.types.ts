@@ -16,7 +16,7 @@ export interface Database {
           step_number: number
           title: string
           description: string
-          youtube_link: string
+          resources: Json
         }
         Insert: {
           id?: string
@@ -24,7 +24,7 @@ export interface Database {
           step_number: number
           title: string
           description: string
-          youtube_link: string
+          resources: Json
         }
         Update: {
           id?: string
@@ -32,7 +32,7 @@ export interface Database {
           step_number?: number
           title?: string
           description?: string
-          youtube_link?: string
+          resources?: Json
         }
       }
       roadmaps: {
