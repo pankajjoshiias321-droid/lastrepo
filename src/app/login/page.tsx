@@ -24,7 +24,15 @@ export default function LoginPage() {
       router.refresh();
     } catch (error: any) {
       console.error('Login error:', error);
-      toast.error(error?.message || 'Failed to log in. Please try again.');
+
+      // Provide specific error messages
+      if (error?.message?.includes('Invalid login credentials')) {
+        toast.error('Invalid email or password. Please check your credentials and try again.');
+      } else if (error?.message?.includes('Email not confirmed')) {
+        toast.error('Please check your email and click the confirmation link before logging in.');
+      } else {
+        toast.error(error?.message || 'Failed to log in. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

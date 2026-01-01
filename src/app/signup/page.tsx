@@ -26,7 +26,7 @@ export default function SignupPage() {
 
     try {
       await signUp(email, password);
-      toast.success('Account created successfully! Please check your email to confirm.');
+      toast.success('Account created successfully! Please check your email to confirm your account before logging in.');
       router.push('/login');
     } catch (error: any) {
       console.error('Signup error:', error);

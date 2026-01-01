@@ -135,10 +135,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/dashboard`,
+        data: {
+          email_confirm: true, // Skip email confirmation for now
+        }
       },
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Signup error:', error);
+      throw error;
+    }
 
     // Insert user into users table
     if (data.user) {
