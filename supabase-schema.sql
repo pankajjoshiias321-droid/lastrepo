@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS roadmaps (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     topic TEXT NOT NULL,
     level TEXT NOT NULL CHECK (level IN ('beginner', 'intermediate', 'advanced')),
+    is_favorite BOOLEAN DEFAULT FALSE,
+    share_token TEXT UNIQUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -91,5 +93,20 @@ CREATE POLICY "Users can delete steps of own roadmaps" ON roadmap_steps
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_roadmaps_user_id ON roadmaps(user_id);
+CREATE INDEX IF NOT EXISTS idx_roadmaps_share_token ON roadmaps(share_token);
+CREATE INDEX IF NOT EXISTS idx_roadmap_steps_roadmap_id ON roadmap_steps(roadmap_id);
+
+-- Public sharing policies
+CREATE POLICY "Anyone can view shared roadmaps" ON roadmaps
+    FOR SELECT TO anon
+    USING (share_token IS NOT NULL);
+
+CREATE POLICY "Anyone can view shared roadmap steps" ON roadmap_steps
+    FOR SELECT TO anon
+    USING (
+        roadmap_id IN (
+            SELECT id FROM roadmaps WHERE share_token IS NOT NULL
+        )
+    );
 CREATE INDEX IF NOT EXISTS idx_roadmap_steps_roadmap_id ON roadmap_steps(roadmap_id);
 CREATE INDEX IF NOT EXISTS idx_roadmaps_created_at ON roadmaps(created_at DESC);
