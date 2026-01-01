@@ -43,6 +43,7 @@ export default function DashboardPage() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
+
   const toggleFavorite = async (roadmap: RoadmapWithFavorite) => {
     try {
       const { error } = await supabase
