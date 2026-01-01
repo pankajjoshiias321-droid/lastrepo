@@ -35,13 +35,14 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuOpen && !(event.target as Element).closest('.menu-container')) {
+      const target = event.target as Element;
+      if (menuOpen && !target.closest('.menu-container') && !target.closest('[data-menu-trigger]')) {
         setMenuOpen(null);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, [menuOpen]);
 
   // Fetch roadmaps when user changes
@@ -80,6 +81,13 @@ export default function DashboardPage() {
   }, [user]);
 
   const toggleFavorite = async (roadmap: RoadmapWithFavorite) => {
+    console.log('toggleFavorite called for roadmap:', roadmap.id);
+    console.log('Current user:', user);
+    console.log('User ID:', user?.id);
+    if (!user) {
+      toast.error('You must be logged in to perform this action');
+      return;
+    }
     try {
       const { error } = await supabase
         .from('roadmaps')
@@ -102,6 +110,11 @@ export default function DashboardPage() {
   };
 
   const shareRoadmap = async (roadmap: RoadmapWithFavorite) => {
+    console.log('shareRoadmap called for roadmap:', roadmap.id);
+    if (!user) {
+      toast.error('You must be logged in to perform this action');
+      return;
+    }
     try {
       let shareToken = roadmap.share_token;
 
@@ -133,12 +146,17 @@ export default function DashboardPage() {
   };
 
   const duplicateRoadmap = async (roadmap: RoadmapWithFavorite) => {
+    console.log('duplicateRoadmap called for roadmap:', roadmap.id);
+    if (!user) {
+      toast.error('You must be logged in to perform this action');
+      return;
+    }
     try {
       // First, create the duplicated roadmap
       const { data: newRoadmap, error: roadmapError } = await supabase
         .from('roadmaps')
         .insert({
-          user_id: user!.id,
+          user_id: user.id,
           topic: `${roadmap.topic} (Copy)`,
           level: roadmap.level,
           is_favorite: false
@@ -182,6 +200,11 @@ export default function DashboardPage() {
   };
 
   const deleteRoadmap = async (roadmap: RoadmapWithFavorite) => {
+    console.log('deleteRoadmap called for roadmap:', roadmap.id);
+    if (!user) {
+      toast.error('You must be logged in to perform this action');
+      return;
+    }
     try {
       const { error } = await supabase
         .from('roadmaps')
@@ -235,25 +258,30 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {roadmaps.map((roadmap) => (
-              <div key={roadmap.id} className="bg-white overflow-hidden shadow rounded-lg relative">
-                <div className="absolute top-4 right-4 menu-container">
+              <div key={roadmap.id} className="bg-white shadow rounded-lg relative">
+                <div className="absolute top-4 right-4 z-50">
                   <div className="relative">
                     <button
-                      onClick={() => setMenuOpen(menuOpen === roadmap.id ? null : roadmap.id)}
-                      className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                      data-menu-trigger
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpen(menuOpen === roadmap.id ? null : roadmap.id);
+                      }}
+                      className="p-2 rounded-full hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <EllipsisVerticalIcon className="w-5 h-5 text-gray-500" />
                     </button>
 
                     {menuOpen === roadmap.id && (
-                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200 menu-container">
+                      <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-xl border border-gray-200 z-50 menu-container">
                         <div className="py-1">
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               toggleFavorite(roadmap);
                               setMenuOpen(null);
                             }}
-                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                           >
                             {roadmap.is_favorite ? (
                               <StarIconSolid className="w-4 h-4 mr-3 text-yellow-500" />
@@ -264,33 +292,36 @@ export default function DashboardPage() {
                           </button>
 
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               duplicateRoadmap(roadmap);
                               setMenuOpen(null);
                             }}
-                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                           >
                             <DocumentDuplicateIcon className="w-4 h-4 mr-3" />
                             Duplicate Roadmap
                           </button>
 
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               shareRoadmap(roadmap);
                               setMenuOpen(null);
                             }}
-                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                           >
                             <ShareIcon className="w-4 h-4 mr-3" />
                             Share Roadmap
                           </button>
 
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setDeleteModal({ open: true, roadmap });
                               setMenuOpen(null);
                             }}
-                            className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                            className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                           >
                             <TrashIcon className="w-4 h-4 mr-3" />
                             Delete Roadmap
@@ -301,7 +332,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="px-4 py-5 sm:p-6">
+                <div className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h3 className="text-lg font-medium text-gray-900 mb-1">{roadmap.topic}</h3>
