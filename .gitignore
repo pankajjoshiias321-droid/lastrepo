@@ -3,3 +3,5 @@ fresh-nextjs/
 Rodemap/
 Rodemapg/
 node_modules/
+.vercel
+.env*.local

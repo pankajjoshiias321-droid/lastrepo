@@ -28,13 +28,11 @@ export default function CreateRoadmapPage() {
         // First, insert the roadmap
         const { data: roadmap, error: roadmapError } = await supabase
           .from('roadmaps')
-          .insert([
-            {
-              user_id: user.id,
-              topic: roadmapData.topic,
-              level: roadmapData.level,
-            }
-          ])
+          .insert({
+            user_id: user.id as string,
+            topic: roadmapData.topic,
+            level: roadmapData.level,
+          })
           .select()
           .single();
 

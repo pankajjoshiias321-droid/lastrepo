@@ -85,9 +85,26 @@ export async function generateRoadmap({ topic, level }: GenerateRoadmapRequest):
     ]
   };
   
-  // Get the base topics for the requested topic, or use a generic path
-  const topicKey = Object.keys(baseTopics).find(key => topic.toLowerCase().includes(key)) || 'web development';
-  const baseSteps = baseTopics[topicKey] || baseTopics['web development'];
+  // Get the base topics for the requested topic, or create a generic path
+  let baseSteps: string[];
+  const topicKey = Object.keys(baseTopics).find(key => topic.toLowerCase().includes(key));
+  if (topicKey) {
+    baseSteps = baseTopics[topicKey];
+  } else {
+    // Create a generic roadmap for unknown topics
+    baseSteps = [
+      `${topic} Fundamentals`,
+      `Introduction to ${topic}`,
+      `Core Concepts in ${topic}`,
+      `Advanced ${topic} Techniques`,
+      `Best Practices for ${topic}`,
+      `${topic} Tools and Frameworks`,
+      `Building Projects with ${topic}`,
+      `${topic} in Real-world Applications`,
+      `Debugging and Troubleshooting ${topic}`,
+      `Future Trends in ${topic}`
+    ];
+  }
   
   // Generate steps based on the topic
   for (let i = 0; i < stepCount; i++) {
